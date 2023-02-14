@@ -1,6 +1,5 @@
 import requests
 
-
 '''Get the coordinates of an entered adress'''
 def getCoordinates(address):
     URL = f"https://api-adresse.data.gouv.fr/search/?q={address}"
@@ -36,6 +35,14 @@ def getProductsAndMenus(nearest_bk_id):
     # print([(p['name'], p['price']) for p in list_products if p['price'] == max_price and p['available'] and p['active']])
     return list_products, list_menus
 
+'''Get the proucts in a menu'''
+def getAvailableInMenu(routeID):
+    menu = [m for m in list_menus if m['routeId'] == routeID][0]
+    products = [p['productIds'] for p in menu['steps']]
+    productsRouteIDs = []
+    for i in range(len(menu['steps'])):
+        productsRouteIDs.append([r['routeId'] for r in list_products if r['id'] in products[i]])
+    return productsRouteIDs
 
 '''Get the calories/crowns ratio of the nearest Burger King'''
 # crowns 
@@ -55,27 +62,20 @@ def getCrownProducts():
     return crownProducts
 
 # calories
-def get_cal(routeID):
+def getMaxCal(routeID):
     # product
-    # try : 
-    URL = f'https://webapi.burgerking.fr/blossom/api/v12/public/produit/{routeID}'
-    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
-    r = requests.get(URL, headers=headers)
-    data = r.json()
-    cal = data['product']['nutrition'][0]['portion']
-    # print(routeID, ':', data['product']['nutrition'][0]['portion'])
+    try : 
+        URL = f'https://webapi.burgerking.fr/blossom/api/v12/public/produit/{routeID}'
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+        r = requests.get(URL, headers=headers)
+        data = r.json()
+        cal = data['product']['nutrition'][0]['portion']
     # menu
-    # except:
-    #     URL = f'https://webapi.burgerking.fr/blossom/api/v12/public/menu/{routeID}'
-    #     r = requests.get(URL, headers=headers)
-    #     data = r.json()
-
-    # with getProductsAndMenus
-    
-        
+    except:
+        productsRouteIDs = getAvailableInMenu(routeID)
+        # get max cal for each list in productsRouteIDs and sum them : 
+        # cal = 
     return cal
-
-
 
 # ratio
 def getRatios():
@@ -90,7 +90,7 @@ def getRatios():
         while error == True:
             try:
                 routeIDtemp = sepator.join(routeIDwords[:words_nbr])
-                cal = get_cal(routeIDtemp)
+                cal = getMaxCal(routeIDtemp)
                 ratios[routeID] = int(cal) / int(crownProducts[routeID])
                 error = False
             except:
@@ -100,23 +100,23 @@ def getRatios():
                     error = False
     return ratios,exceptions
 
-
+'''Needs to be global'''
 lon, lat = getCoordinates('Le Havre')
 radius = 50000
-
-# print(get_cal('cheeseburger-')) #305
 list_products, list_menus = getProductsAndMenus(getNearestBkId(lon,lat,radius))
-# save json
-# with open('products.json', 'w') as f:
-#     f.write(str(list_products))
-# with open('menus.json', 'w') as f:
-#     f.write(str(list_menus))
 
 
-ratios,exceptions = getRatios()
-print('Meilleur rapport calories/couronnes :')
-print(max(ratios, key=ratios.get),'qui contient',get_cal(max(ratios, key=ratios.get)),'calories et coûte',getCrownProducts()[max(ratios, key=ratios.get)],'couronnes')
-print('Pire rapport calories/couronnes :')
-print(min(ratios, key=ratios.get),'qui contient',get_cal(min(ratios, key=ratios.get)),'calories et coûte',getCrownProducts()[min(ratios, key=ratios.get)],'couronnes')
-print("Les éléments dont les calories n'ont pas pu être récupérées sont :")
-print(exceptions)
+
+
+# print(getProductsAndMenus(getNearestBkId(lon,lat,radius)))
+# print(getMaxCal('cheeseburger-')) #305
+
+print(getAvailableInMenu('kingdom-menu-whopper'))
+
+# ratios,exceptions = getRatios()
+# print('Meilleur rapport calories/couronnes :')
+# print(max(ratios, key=ratios.get),'qui contient',getMaxCal(max(ratios, key=ratios.get)),'calories et coûte',getCrownProducts()[max(ratios, key=ratios.get)],'couronnes')
+# print('Pire rapport calories/couronnes :')
+# print(min(ratios, key=ratios.get),'qui contient',getMaxCal(min(ratios, key=ratios.get)),'calories et coûte',getCrownProducts()[min(ratios, key=ratios.get)],'couronnes')
+# print("Les éléments dont les calories n'ont pas pu être récupérées sont :")
+# print(exceptions)
